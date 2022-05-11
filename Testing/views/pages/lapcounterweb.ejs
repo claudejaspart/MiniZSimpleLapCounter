@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html>
+<head>
+ <meta charset="utf-8" />
+ <title>Simple Lap Counter</title>
+
+ <style>
+     body
+     {
+        background: radial-gradient(ellipse at center,#192d38 0,#211f2f 100%);
+        font-family: Mukta Mahee,Helvetica,Arial,sans-serif;
+        color: white;
+        margin: 20px;
+     }
+
+     .title
+     {
+         width: 100%;
+         text-align: center;
+         
+     }
+
+    .leaderboard
+    {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(6, 1fr);
+    grid-column-gap: 0px;
+    grid-row-gap: 0px; 
+    border: 1px solid #08ffbd;
+    grid-template-areas: 
+            "title-player title-time"
+            "p1-player p1-time"
+            "p2-player p2-time"
+            "p3-player p3-time"
+            "p4-player p4-time"
+            "p5-player p5-time";
+ 
+    }
+
+    .grid-style
+    {
+        border-bottom: 1px solid #08ffbd;
+        padding: 10px
+    }
+
+   .title-player{grid-area: title-player;}
+   .title-time{grid-area: title-time;}
+
+   .p1-player{grid-area: p1-player;}
+   .p1-time{grid-area: p1-time;}
+
+   .p2-player{grid-area: p2-player;}
+   .p2-time{grid-area: p2-time;}
+
+   .p3-player{grid-area: p3-player;}
+   .p3-time{grid-area: p3-time;}
+
+   .p4-player{grid-area: p4-player;}
+   .p4-time{grid-area: p4-time;}
+
+   .p5-player{grid-area: p5-player;}
+   .p5-time{grid-area: p5-time;}
+
+   .new-race-grid
+    {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-template-rows: repeat(1, 1fr);
+        grid-column-gap: 0px;
+        grid-row-gap: 0px; 
+        border: 1px solid #08ffbd;
+        grid-template-areas: 
+                "player-name number-laps start-race reset-race";
+    }
+
+
+
+    .start, .reset
+    {
+        background: transparent;
+        padding: 4px 30px 5px;
+        border-radius: 1000px;
+        font-size: 16px;
+        cursor: pointer;
+        -webkit-transition: all .35s;
+        transition: all .35s;
+    }
+
+    .input-text
+    {
+        padding: 3px 30px 5px; 
+    }
+
+    .start
+    {
+        color: #08ffbd;
+        border: 1px solid #08ffbd;
+    }
+
+    .reset
+    {
+        color: #ef0b72;
+        border: 1px solid #ef0b72;
+    }
+
+    .start:hover
+    {
+        background-color: #08ffbd;
+        color: black;
+    }
+
+    .reset:hover
+    {
+        background-color: #ef0b72;
+        color: black;
+    }
+
+    input
+    {
+        width:70px;
+        background-color: #08ffbd;
+        border: none;
+        padding : 5px;
+        border-radius: 2px;
+        font-weight: bold;
+        font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    .row-data
+    {
+        display: flex;
+        width: 100%;
+    }
+
+    .first-row-data
+    {
+        border: 1px solid #08ffbd;
+    }
+
+    .other-row-data
+    {
+        border-left: 1px solid #08ffbd;
+        border-right: 1px solid #08ffbd;
+        border-bottom: 1px solid #08ffbd;
+    }
+
+
+    .lap-number
+    {
+        display: inline-flex;
+        width: 50%;
+    }
+
+    .lap-time
+    {
+        display: inline-flex;
+        width: 50%;
+    }
+
+    .lap-number, .lap-time
+    {
+        padding: 5px 5px 5px 10px;
+    }
+
+
+ </style>
+
+</head>
+
+    <body>
+        <div class="title"><h1>RACING TIMER</h1></div>
+
+        <h2>Best laps leaderboard</h2>
+        <div class="leaderboard" id="leaderboard">
+            <div class="title-player grid-style"><b>Player</b></div>
+            <div class="title-time grid-style"><b>Best lap time</b></div>
+        </div>
+
+        <br>
+        <h2>New Race</h2>
+
+        <div class="new-race-grid">
+            <div class="player-name grid-style"><div class="input-text" >Player : <input type="text" id="player"></div></div>
+            <div class="number-laps grid-style"><div class="input-text" >Laps : <input type="number" min="1" id="laps"></div></div>
+            <div class="start-race grid-style"><button class="start" onclick="startNewRace()">Start</button></div>
+            <div class="reset-race grid-style"><button class="reset" onclick="resetRace()">Reset</button></div>
+        </div>
+
+        <br>
+        <span class="race-date">
+
+            <h2 id="current-race"></h2>
+
+            <span id="current-laps"></span>
+
+        </span>
+
+    </body>
+
+    <script>
+
+    // variables
+    let times = [];
+    let bestTimes = [];
+    let laps = 0;
+    let getLapTimeId = undefined;
+    
+
+    displayLeaderboard();
+
+    function resetRace()
+    {
+        // reinit resultats
+        times = [];
+        document.getElementById('current-laps').innerHTML = "";
+        document.getElementById("current-race").innerHTML = ""; 
+        if (getLapTimeId != undefined)
+            clearInterval(getLapTimeId);
+        getLapTimeId = undefined;
+    }
+
+    // post new race
+    function startNewRace() 
+    {
+        if (getLapTimeId === undefined)
+        {
+            // récuperation des valeurs
+            let player = document.getElementById("player").value;
+            laps = document.getElementById("laps").value;
+
+            // reinit resultats
+            times = [];
+            document.getElementById('current-laps').innerHTML = "";
+
+            // post start new race
+            var uniqueURL = "reqEtatBouton" + "&aleatoire=" + Math.trunc(Math.random() * 1000000);
+            var request = new XMLHttpRequest(); 
+            request.open("POST", "/newrace");
+            request.setRequestHeader("Content-type", "application/x-www-form-urlencoded")
+            request.send(`player=${player}&laps=${laps}`);
+
+            // la fonction à appeler lors d'un changement d'avancement de la requête AJAX
+            request.onreadystatechange = function()
+            {
+                if (this.readyState == 4) 
+                { 
+                    // Indicateur de l'avancement de l'appel AJAX == 4 => Données complètement accessibles 
+                    if (this.status == 200 && this.responseText != null) 
+                    { 
+                        document.getElementById("current-race").innerHTML = "Racing"; 
+                        getLapTimeId = setInterval(getLapTime, 1000);               
+                    }
+                }
+            }
+        }
+    }
+
+
+    // get lap time
+    function getLapTime() 
+    {
+        var uniqueURL = "update" + "&aleatoire=" + Math.trunc(Math.random() * 1000000);
+        var request = new XMLHttpRequest(); 
+
+        // la fonction à appeler lors d'un changement d'avancement de la requête AJAX
+        request.onreadystatechange = function()
+        {
+            if (this.readyState == 4) 
+            { 
+                // Indicateur de l'avancement de l'appel AJAX == 4 => Données complètement accessibles 
+                if (this.status == 200 && this.responseText != null) 
+                { 
+                    if (times.length < laps)
+                    {
+                        if (times.length === 0)
+                        {
+                            displayLap(this.responseText);
+                            times.push(this.responseText);
+                        }
+                        else
+                        {
+                            if (this.responseText!=times[times.length-1])
+                            {
+                                displayLap(this.responseText);
+                                times.push(this.responseText);
+                            }
+                        }
+                        
+                        // fin de la course
+                        if (times.length === parseInt(laps))
+                        {
+                            // cleanup
+                            document.getElementById("current-race").innerHTML = "Race over"; 
+                            clearInterval(getLapTimeId);
+                            getLapTimeId = undefined;
+
+                            // meilleur score
+
+                        }
+                    }
+
+                }
+            }
+        }
+         
+        request.open("GET", "update" , true);
+        request.send(null);
+    }
+
+    // reset race
+
+    // affichage nouveaux tours
+    function displayLap(currentLapTime)
+    {
+        let currentLapIndex = times.length + 1
+        let domStr = `<div class="row-data first-row-data"><div class="lap-number">Lap ${currentLapIndex}</div><div class="lap-time">${currentLapTime}</div></div>`
+        document.getElementById('current-laps').innerHTML = document.getElementById('current-laps').innerHTML + domStr;
+    }
+
+    // affichage leaderboard
+    function displayLeaderboard()
+    {
+        let leaderboardId = document.getElementById("leaderboard");
+        bestTimes = [];
+        bestTimes.push({"player":"John Doe", "laptime":"12:34.567"});
+        for (let i=0;i<bestTimes.length;i++)
+        {
+            let gridIndex = i + 1;
+            let currentRow = `<div class="p${gridIndex}-name grid-style">${bestTimes[i].player}</div><div class="p${gridIndex}-time grid-style">${bestTimes[i].laptime}</div>`;
+            leaderboardId.innerHTML = leaderboardId.innerHTML + currentRow;
+        }
+    }
+        
+    </script>
+
+
+</html>
