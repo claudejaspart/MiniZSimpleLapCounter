@@ -21,11 +21,6 @@ app.get('/update', (req,res)=>
     res.send(time);
 })
 
-app.post("/newrace", (req,res)=>
-{
-    console.log(req.body.player, req.body.laps)
-    res.send("ok post");
-})
 
 app.listen(5000, (err)=>
 {
@@ -47,6 +42,7 @@ setInterval(()=>
         milli = "0" + milli;
 
     time = min + ":" + sec + ":" + milli;
+    time = "01:32:381"
     console.log(time)
     
 },5000)
