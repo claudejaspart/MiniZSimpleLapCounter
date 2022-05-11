@@ -163,6 +163,21 @@
         padding: 5px 5px 5px 10px;
     }
 
+    .red
+    {
+        color : #ef0b72;
+    }
+
+    .green
+    {
+        color:#08ffbd;
+    }
+
+    .white
+    {
+        color:white;
+    }
+
 
  </style>
 
@@ -178,11 +193,11 @@
         </div>
 
         <br>
-        <h2>New Race</h2>
+        <h2 id="new-race">New Race</h2>
 
         <div class="new-race-grid">
             <div class="player-name grid-style"><div class="input-text" >Player : <input type="text" id="player"></div></div>
-            <div class="number-laps grid-style"><div class="input-text" >Laps : <input type="number" min="1" id="laps"></div></div>
+            <div class="number-laps grid-style"><div class="input-text" >Laps : <input type="number" min="1" value="5" id="laps"></div></div>
             <div class="start-race grid-style"><button class="start" onclick="startNewRace()">Start</button></div>
             <div class="reset-race grid-style"><button class="reset" onclick="resetRace()">Reset</button></div>
         </div>
@@ -203,8 +218,16 @@
     // variables
     let times = [];
     let bestTimes = [];
+    let player="";
     let laps = 0;
     let getLapTimeId = undefined;
+    let leaderboard = [
+        {"player":"Claude", "laptime" : "43:23:123"},
+        {"player":"Grégoire", "laptime" : "43:26:123"},
+        {"player":"Grégoire", "laptime" : "47:23:123"},
+        {"player":"Claude", "laptime" : "50:23:123"},
+        {"player":"Claude", "laptime" : "54:23:123"}
+    ];
     
 
     displayLeaderboard();
@@ -223,11 +246,15 @@
     // post new race
     function startNewRace() 
     {
-        if (getLapTimeId === undefined)
+        // récuperation des valeurs
+        player = document.getElementById("player").value;
+        laps = parseInt(document.getElementById("laps").value);
+        console.log(player)
+
+        if (getLapTimeId === undefined && player.length > 0)
         {
-            // récuperation des valeurs
-            let player = document.getElementById("player").value;
-            laps = document.getElementById("laps").value;
+            // titre section
+            document.getElementById("new-race").innerHTML = "New Race";
 
             // reinit resultats
             times = [];
@@ -253,6 +280,10 @@
                     }
                 }
             }
+        }
+        else if (!player.length)
+        {
+            document.getElementById("new-race").innerHTML = "New Race <span class='red'> [ Player name not defined ]</span>";
         }
     }
 
@@ -286,6 +317,9 @@
                                 times.push(this.responseText);
                             }
                         }
+
+                        // scroll down auto
+                        window.scrollTo(0, document.body.scrollHeight);
                         
                         // fin de la course
                         if (times.length === parseInt(laps))
@@ -296,6 +330,7 @@
                             getLapTimeId = undefined;
 
                             // meilleur score
+                            calculateLeaderBoard();
 
                         }
                     }
@@ -308,7 +343,37 @@
         request.send(null);
     }
 
-    // reset race
+    // calcul du leaderboard
+    function calculateLeaderBoard()
+    {
+        // temps en cours
+        times = times.map(el => parseInt(el.split(":").join(""))).sort((a,b)=>a-b)
+        
+        // insertion temps leaderboard
+        times.forEach((t)=>
+        {
+            t = t.toString();
+            currentLap = t.slice(0,2) + ":" + t.slice(2,4) + ":" +t.slice(4,7);
+            leaderboard.push({"player":player, "laptime" : currentLap})
+        })
+
+        // tri sur les temps
+        leaderboard = leaderboard.sort((a,b)=>{
+            t1 = parseInt(a.laptime.split(":").join(""))
+            t2 = parseInt(b.laptime.split(":").join(""))
+
+            return t1-t2;
+        });
+
+        // extraction top 5
+        leaderboard=leaderboard.slice(0,5);
+
+        // maj des résultats
+        displayLeaderboard();
+    }
+
+
+
 
     // affichage nouveaux tours
     function displayLap(currentLapTime)
@@ -322,12 +387,13 @@
     function displayLeaderboard()
     {
         let leaderboardId = document.getElementById("leaderboard");
-        bestTimes = [];
-        bestTimes.push({"player":"John Doe", "laptime":"12:34.567"});
-        for (let i=0;i<bestTimes.length;i++)
+        leaderboardId.innerHTML = "<div class='title-player grid-style'><b>Player</b></div><div class='title-time grid-style'><b>Best lap time</b></div>";
+        
+        for (let i=0;i<leaderboard.length;i++)
         {
             let gridIndex = i + 1;
-            let currentRow = `<div class="p${gridIndex}-name grid-style">${bestTimes[i].player}</div><div class="p${gridIndex}-time grid-style">${bestTimes[i].laptime}</div>`;
+            let currentRow = `<div class="p${gridIndex}-name grid-style">${leaderboard[i].player}</div><div class="p${gridIndex}-time grid-style">${leaderboard[i].laptime}</div>`;
+            console.log(currentRow)
             leaderboardId.innerHTML = leaderboardId.innerHTML + currentRow;
         }
     }

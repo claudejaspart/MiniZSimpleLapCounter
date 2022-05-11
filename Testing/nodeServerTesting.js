@@ -46,7 +46,7 @@ setInterval(()=>
     else if (milli < 100)
         milli = "0" + milli;
 
-    time = min + ":" + sec + "." + milli;
+    time = min + ":" + sec + ":" + milli;
     console.log(time)
     
 },5000)
