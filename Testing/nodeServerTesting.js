@@ -42,7 +42,6 @@ setInterval(()=>
         milli = "0" + milli;
 
     time = min + ":" + sec + ":" + milli;
-    time = "01:32:381"
     console.log(time)
     
 },5000)
