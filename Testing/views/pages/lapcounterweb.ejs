@@ -221,6 +221,7 @@
     let player="";
     let laps = 0;
     let getLapTimeId = undefined;
+    let currentLapIndex = 0
     
     // initialisation page
     displayLeaderboard();
@@ -258,8 +259,16 @@
             times = [];
             document.getElementById('current-laps').innerHTML = "";
 
-            document.getElementById("current-race").innerHTML = "Racing"; 
+            // affichage du titre
+            document.getElementById("current-race").innerHTML = "Race !!!"; 
+
+            // affichage lap 1
+            currentLapIndex = 1
+            displayNewLap();
+
+
             getLapTimeId = setInterval(getLapTime, 1000);  
+
         }
         else if (!player.length)
         {
@@ -381,8 +390,18 @@
     // affichage nouveaux tours
     function displayLap(currentLapTime)
     {
-        let currentLapIndex = times.length + 1
-        let domStr = `<div class="row-data first-row-data"><div class="lap-number">Lap ${currentLapIndex}</div><div class="lap-time">${currentLapTime}</div></div>`
+        document.getElementById(`lap-${currentLapIndex}`).innerHTML = currentLapTime;
+        if (currentLapIndex < laps)
+        {
+            currentLapIndex++;
+            displayNewLap();
+        }
+
+    }
+
+    function displayNewLap()
+    {
+        let domStr = `<div class="row-data first-row-data"><div class="lap-number">Lap ${currentLapIndex}</div><div class="lap-time" id='lap-${currentLapIndex}'>--:--:---</div></div>`
         document.getElementById('current-laps').innerHTML = document.getElementById('current-laps').innerHTML + domStr;
     }
 
