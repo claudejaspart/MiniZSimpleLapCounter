@@ -1,17 +1,15 @@
 #include "FS.h" // pour le SPIFFS
 #include <ESP8266WiFi.h> 
-#include <IRremote.h>
 
-int RECV_PIN = 4;
-IRrecv irrecv(RECV_PIN);
-decode_results results;
+
+int CONNECTED_WIFI_PIN = 0;
 
 int sensitivity = 200; // ms
 boolean carDetected = false;
 
 const char * nomDeFichier = "/lapcounterweb.html";        
-const char* ssid     = "NoLanBox";
-const char* password = "mumu-COCO-2019";
+const char* ssid     = "***";
+const char* password = "***";
 
 const byte pinBouton = D3;
 
@@ -24,7 +22,17 @@ char httpLine[maxHTTPLine + 1]; // +1 pour avoir la place du '\0'
 const byte maxURL = 50;
 char urlRequest[maxURL + 1]; // +1 pour avoir la place du '\0'
 
+// indicator led
+int led = 5;
 
+// analog pin for ir level detection
+int irPin = A0; 
+int irValue = 0;
+
+// ir tweaking options
+int minValue= 0;
+int maxValue=0;
+int irThreshold = 0;
 
 /* lap counting vars */
 long int t0;
@@ -32,10 +40,12 @@ long int t1;
 bool lapStarted = false;
 String laptime = "";
 boolean updated = false;
+boolean race_started = false;
 
 void printHTTPServerInfo()
 {
-  Serial.print(F("Site web http://")); Serial.print(WiFi.localIP());
+  Serial.print(F("Site web http://")); 
+  Serial.print(WiFi.localIP());
   if (HTTPPort != 80) 
   {
     Serial.print(F(":"));
@@ -55,6 +65,13 @@ void resUpdateChrono(WiFiClient &cl)
   {
     cl.print("");
   }
+}
+
+void sendIRValues(WiFiClient &cl)
+{
+  String result = (String) minValue + "," + (String) maxValue;
+  cl.print(result);
+  Serial.println(result);
 }
 
 boolean gestionRequetesHTTP()
@@ -92,10 +109,54 @@ boolean gestionRequetesHTTP()
           } 
           else if (strstr(urlRequest, "/reset")) 
           { 
-            Serial.println("resetting race");
+            race_started = false;
             lapStarted=false;
             laptime="";
             updated=false;
+            Serial.println("Race reseted");
+          } 
+          else if (strstr(urlRequest, "/init")) 
+          { 
+            getIRValues();
+            sendIRValues(client);
+            Serial.println("IR values measured");
+          }
+          else if (strstr(urlRequest, "/setir")) 
+          { 
+            char* th = "000";
+      
+            // recupère index position
+            String str = urlRequest;
+            String substr = "/thresh?";
+            int index = -1;
+            for (int i = 0; str[i] != '\0'; i++) 
+            {
+              index = -1;
+              for (int j = 0; substr[j] != '\0'; j++) 
+              {
+                if (str[i + j] != substr[j]) 
+                {
+                    index = -1;
+                    break;
+                }
+                index = i;
+              }
+              if (index != -1) 
+              {
+                  break;
+              }
+            }
+
+            strncpy(th, urlRequest + index + 8, strlen(urlRequest) - index - 8);
+            irThreshold = atoi(th);
+            
+            Serial.print("IR threshold set : ");
+            Serial.println(irThreshold);
+          }
+          else if (strstr(urlRequest, "/start")) 
+          { 
+            race_started = true;      
+            Serial.println("Race started");    
           } 
           else 
           { 
@@ -196,12 +257,49 @@ void getLap()
     }
 }
 
+void getIRValues()
+{
+  // max values
+  maxValue = 0;
+  digitalWrite(led, LOW);
+  for(int i=0;i<10;i++)
+  {
+    int val = analogRead(irPin);
+    maxValue += val;
+    delay(100);
+  }
+  maxValue = maxValue / 10;
+  Serial.println(maxValue);
+
+  digitalWrite(led, HIGH);
+  delay(1000);
+  digitalWrite(led, LOW);
+  delay(1000);
+  digitalWrite(led, HIGH);
+
+  // min values
+  minValue = 0;
+  for(int i=0;i<10;i++)
+  {
+    int val = analogRead(irPin);
+    minValue += val;
+    delay(100);
+  }
+  minValue = minValue / 10;
+  Serial.println(minValue);
+  digitalWrite(led, LOW);
+}
+
 /* ***************************** */
 /* SETUP                         */
 /* ***************************** */
 void setup() {
 
+  pinMode(led, OUTPUT);
+  digitalWrite(led, LOW);
   pinMode(pinBouton, INPUT_PULLUP);
+  pinMode(CONNECTED_WIFI_PIN, OUTPUT);
+  digitalWrite(CONNECTED_WIFI_PIN, LOW);
 
   Serial.begin(74880); // parce que mon Wemos et par défaut à peu près à cette vitesse, évite les caractères bizarre au boot
   Serial.println("\n\nTest SPIFFS\n");
@@ -223,18 +321,22 @@ void setup() {
   }
   Serial.println();
 
+  // connected
+  digitalWrite(CONNECTED_WIFI_PIN, HIGH);
+
   // on démarre le serveur
   serveurWeb.begin();
   printHTTPServerInfo();
 
-  // ir
-  irrecv.enableIRIn();
+  // indication demarrage
+  digitalWrite(led, HIGH);
+  delay(500);
+  digitalWrite(led, LOW);
+  delay(500);
+  digitalWrite(led, HIGH);
+  delay(500);
+  digitalWrite(led, LOW);
 }
-
-
-
-
-
 
 
 
@@ -249,22 +351,17 @@ void loop()
   // gestion requete http
   gestionRequetesHTTP();
 
-  // detection voiture
-  if (irrecv.decode(&results)) 
+  // detection voiture si pas de signal
+  if (!race_started)
   {
-    unsigned long val = results.value;
+    int val = 10 * analogRead(irPin);  
     Serial.println(val);
-
-    if (val != 1082195712)
+    if (val < 120)
     {
-      Serial.println("car detected !");
-      getLap();
-      
+
+        //getLap();
     }
-    //Serial.println(val);
-    irrecv.resume(); // Receive the next value
   }
 
-  delay(200);
-
+  delay(10);
 }

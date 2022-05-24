@@ -269,6 +269,11 @@
 
             getLapTimeId = setInterval(getLapTime, 1000);  
 
+            // debut coté serveur
+            var startURL = "start" //+  "&cachekiller=" + Math.trunc(Math.random() * 1000000);
+            var request = new XMLHttpRequest(); 
+            request.open("GET", startURL , true);
+            request.send(null);
         }
         else if (!player.length)
         {
