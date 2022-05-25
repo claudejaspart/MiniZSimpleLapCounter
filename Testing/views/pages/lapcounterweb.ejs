@@ -17,8 +17,55 @@
      {
          width: 100%;
          text-align: center;
-         
      }
+
+    .options
+    {
+        width: 100%;
+        text-align: center;
+    }
+
+    .options-button
+    {
+        background-color: #192d38;
+        border-radius: 5px;
+        border : 1px solid #08ffbd;
+        color : #08ffbd;
+        width: 100px;
+        padding-top: 5px;
+        padding-bottom: 5px;
+        margin:auto;
+    }
+
+    .options-button:hover
+    {
+        cursor:pointer;
+    }
+
+    .options-button:active
+    {
+        transform: translateY(4px);
+        transition: ease-in-out 0.1s;
+        cursor: pointer;
+    }
+
+    .irsettings
+    {
+        margin-top: 15px;
+        margin-bottom: 15px;
+        border:1px solid #08ffbd;
+        padding : 10px;
+    }
+
+    .irclass
+    {
+        margin: 10px;
+    }
+
+    .result
+    {
+        width: 150px;
+    }
 
     .leaderboard
     {
@@ -35,7 +82,6 @@
             "p3-player p3-time"
             "p4-player p4-time"
             "p5-player p5-time";
- 
     }
 
     .grid-style
@@ -185,6 +231,27 @@
 
     <body>
         <div class="title"><h1>RACING TIMER</h1></div>
+        <div class="options"><div class="options-button" onclick="showIRSettings()">options</div></div>
+
+        <span id="irsettings" hidden>
+            <h2>IR Settings</h2>
+            <div class="irsettings">
+                <div class="irclass">
+                    <button class="start" id="btnMeasure" onclick="measureIRValues()">Measure</button>&nbsp;&nbsp;&nbsp;
+                    <button class="start" id="btnRetrieve" onclick="retrieveIRValues()">Retrieve</button>
+                </div>
+                <br>
+                <div class="irclass">Min Values &nbsp;:&nbsp;<span id="field1"></span></div>
+                <div class="irclass">Max Values :&nbsp;<span id="field2"></span></div>
+                <div class="irclass">Cut Value &nbsp;&nbsp;&nbsp;:&nbsp;<span id="field3"></span></div>
+                <br>
+                <div class="irclass">New value &nbsp;:&nbsp;&nbsp;&nbsp;
+                                    <input type="text" id="newcutvalue">&nbsp;&nbsp;&nbsp;
+                                    <button class="start" id="btnUpdate" onclick="updateIRCut()">Update</button>&nbsp;&nbsp;&nbsp;
+                                
+                </div>
+            </div>
+        </span>
 
         <h2>Best laps leaderboard</h2>
         <div class="leaderboard" id="leaderboard">
@@ -221,10 +288,80 @@
     let player="";
     let laps = 0;
     let getLapTimeId = undefined;
-    let currentLapIndex = 0
+    let currentLapIndex = 0;
+    let irTabOpen = false;
     
     // initialisation page
     displayLeaderboard();
+
+    // affiche la boite de dialogue avec les valeurs ir
+    function showIRSettings()
+    {
+        irTab = document.getElementById('irsettings');
+        if (irTabOpen)
+        {
+            irTab.hidden = true;
+        }
+        else
+        {
+            irTab.hidden = false;
+        }
+        irTabOpen = !irTabOpen;
+    }
+
+    function updateIRCut()
+    {
+        let irCutValue = document.getElementById("newcutvalue").value;
+        if (irCutValue.length===2)
+        {
+            irCutValue = "0" + irCutValue.toString();
+        }
+        else if (irCutValue.length===1)
+        {
+            irCutValue = "00" + irCutValue.toString();
+        }
+        document.getElementById("field3").innerHTML = irCutValue;
+        var URL = "setir/?ircut=" + irCutValue;
+        document.getElementById("newcutvalue").value = "";
+        var request = new XMLHttpRequest();
+        request.open("GET", URL , true);
+        request.send(null);
+    }
+
+    function measureIRValues()
+    {
+            var URL = "measure" //+  "&cachekiller=" + Math.trunc(Math.random() * 1000000);
+            var request = new XMLHttpRequest(); 
+            request.open("GET", URL , true);
+            request.send(null);
+    }
+
+    function retrieveIRValues()
+    {
+        var URL = "retrieve" //+  "&cachekiller=" + Math.trunc(Math.random() * 1000000);
+        var request = new XMLHttpRequest(); 
+        request.open("GET", URL , true);
+        request.send(null);
+
+        request.onreadystatechange = function()
+        {
+            if (this.readyState == 4) 
+            { 
+
+                // suppression des retours chariots au cas où
+                this.responseText = this.responseText.replace(/(\r\n|\n|\r)/gm,"");
+
+                
+                if (this.status == 200 && this.responseText != null && this.responseText !== "") 
+                { 
+                    let data = JSON.parse(this.responseText);
+                    document.getElementById("field1").innerHTML = data.minValues.split(",").map(el=>parseInt(el)).sort((a,b)=>a-b);
+                    document.getElementById("field2").innerHTML = data.maxValues.split(",").map(el=>parseInt(el)).sort((a,b)=>b-a);
+                    document.getElementById("field3").innerHTML = data.irCutValue;
+                }
+            }
+        }
+    }
 
     // reset the current race (just stops it and clear current lap results)
     function resetRace()
@@ -269,11 +406,25 @@
 
             getLapTimeId = setInterval(getLapTime, 1000);  
 
+            // debut coté serveur
+            var startURL = "start" //+  "&cachekiller=" + Math.trunc(Math.random() * 1000000);
+            var request = new XMLHttpRequest(); 
+            request.open("GET", startURL , true);
+            request.send(null);
         }
         else if (!player.length)
         {
             document.getElementById("new-race").innerHTML = "New Race <span class='red'> [ Player name not defined ]</span>";
         }
+    }
+
+    function stopRace()
+    {
+        // fin coté serveur
+        var URL = "stop" //+  "&cachekiller=" + Math.trunc(Math.random() * 1000000);
+        var request = new XMLHttpRequest(); 
+        request.open("GET", URL , true);
+        request.send(null);
     }
 
 
@@ -293,6 +444,7 @@
 
                 // suppression des retours chariots au cas où
                 this.responseText = this.responseText.replace(/(\r\n|\n|\r)/gm,"");
+               
                 
 
                 if (this.status == 200 && this.responseText != null && this.responseText !== "") 
@@ -322,6 +474,7 @@
                         if (times.length === parseInt(laps))
                         {
                             // cleanup
+                            stopRace();
                             document.getElementById("current-race").innerHTML = "Race over"; 
                             clearInterval(getLapTimeId);
                             getLapTimeId = undefined;
