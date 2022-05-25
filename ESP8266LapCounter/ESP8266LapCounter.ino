@@ -30,9 +30,11 @@ int irPin = A0;
 int irValue = 0;
 
 // ir tweaking options
-int minValue= 0;
-int maxValue=0;
-int irThreshold = 0;
+String minValues= "";
+String maxValues= "";
+String irCutValue = "000";
+int multiplicator = 10;
+int irCutValueInt = 0;
 
 /* lap counting vars */
 long int t0;
@@ -67,12 +69,6 @@ void resUpdateChrono(WiFiClient &cl)
   }
 }
 
-void sendIRValues(WiFiClient &cl)
-{
-  String result = (String) minValue + "," + (String) maxValue;
-  cl.print(result);
-  Serial.println(result);
-}
 
 boolean gestionRequetesHTTP()
 {
@@ -107,6 +103,16 @@ boolean gestionRequetesHTTP()
           { 
             resUpdateChrono(client);
           } 
+          else if (strstr(urlRequest, "/retrieve")) 
+          { 
+            String data = "{";
+            data = data + "\"minValues\":\"" + minValues + "\",";
+            data = data + "\"maxValues\":\"" + maxValues + "\",";
+            data = data + "\"irCutValue\":\"" + irCutValue + "\"";
+            data = data + "}";
+
+            client.print(data);
+          } 
           else if (strstr(urlRequest, "/reset")) 
           { 
             race_started = false;
@@ -115,19 +121,23 @@ boolean gestionRequetesHTTP()
             updated=false;
             Serial.println("Race reseted");
           } 
-          else if (strstr(urlRequest, "/init")) 
+          else if (strstr(urlRequest, "/measure")) 
           { 
-            getIRValues();
-            sendIRValues(client);
-            Serial.println("IR values measured");
+            measureIRValues();
+            client.print("");
+          }
+          else if (strstr(urlRequest, "/stop")) 
+          { 
+            race_started=false;
+            client.print("");
           }
           else if (strstr(urlRequest, "/setir")) 
           { 
             char* th = "000";
-      
+            
             // recupère index position
             String str = urlRequest;
-            String substr = "/thresh?";
+            String substr = "ircut=";
             int index = -1;
             for (int i = 0; str[i] != '\0'; i++) 
             {
@@ -147,16 +157,17 @@ boolean gestionRequetesHTTP()
               }
             }
 
-            strncpy(th, urlRequest + index + 8, strlen(urlRequest) - index - 8);
-            irThreshold = atoi(th);
+            strncpy(th, urlRequest + index + 6, strlen(urlRequest) - index - 6);
+            irCutValue = th;
+            irCutValueInt = atoi(th);
             
-            Serial.print("IR threshold set : ");
-            Serial.println(irThreshold);
+            //Serial.print("IR cut value set : ");
+            //Serial.println(irCutValueInt);
           }
           else if (strstr(urlRequest, "/start")) 
           { 
             race_started = true;      
-            Serial.println("Race started");    
+            //Serial.println("Race started");    
           } 
           else 
           { 
@@ -257,36 +268,55 @@ void getLap()
     }
 }
 
-void getIRValues()
+void measureIRValues()
 {
+  int nbValues = 5;
+  
   // max values
-  maxValue = 0;
+  maxValues = "";  
+  digitalWrite(led, HIGH);
+  delay(200);
   digitalWrite(led, LOW);
-  for(int i=0;i<10;i++)
+  delay(200);
+  digitalWrite(led, HIGH);
+  delay(200);
+  digitalWrite(led, LOW);
+  delay(200);
+  digitalWrite(led, HIGH);
+  delay(200);
+  digitalWrite(led, LOW);
+  delay(200);
+  for(int i=0;i<nbValues;i++)
   {
-    int val = analogRead(irPin);
-    maxValue += val;
-    delay(100);
+    int val = multiplicator*analogRead(irPin);
+    if (i<nbValues-1)
+      maxValues = maxValues + (String) val + ",";
+    else
+      maxValues = maxValues + (String) val;
+    
+    delay(200);
   }
-  maxValue = maxValue / 10;
-  Serial.println(maxValue);
 
+  
+  // phase coupure
   digitalWrite(led, HIGH);
-  delay(1000);
-  digitalWrite(led, LOW);
-  delay(1000);
-  digitalWrite(led, HIGH);
+  delay(4000);
 
   // min values
-  minValue = 0;
-  for(int i=0;i<10;i++)
+  minValues = "";
+  for(int i=0;i<nbValues;i++)
   {
-    int val = analogRead(irPin);
-    minValue += val;
-    delay(100);
+    int val = multiplicator*analogRead(irPin);
+    if (i<nbValues-1)
+      minValues = minValues + (String) val + ",";
+    else
+      minValues = minValues + (String) val;
+    
+    delay(200);
   }
-  minValue = minValue / 10;
-  Serial.println(minValue);
+
+ 
+  // fin de la mesure
   digitalWrite(led, LOW);
 }
 
@@ -352,14 +382,18 @@ void loop()
   gestionRequetesHTTP();
 
   // detection voiture si pas de signal
-  if (!race_started)
+  if (race_started)
   {
-    int val = 10 * analogRead(irPin);  
+    int val = multiplicator*analogRead(irPin);  
     Serial.println(val);
-    if (val < 120)
-    {
+    Serial.println(irCutValueInt);
+    Serial.println(val<irCutValueInt);
+    Serial.println("**************");
 
-        //getLap();
+    if (val < irCutValueInt)
+    {
+        getLap();
+        delay(500);
     }
   }
 
